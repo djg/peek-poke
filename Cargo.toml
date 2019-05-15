@@ -1,0 +1,29 @@
+[workspace]
+
+[package]
+name = "peek-poke"
+version = "0.1.0"
+authors = ["Dan Glastonbury <dan.glastonbury@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+euclid = { version = "*", optional = true }
+peek-poke-derive = { version = "0.1", path = "./peek-poke-derive", optional = true }
+
+[dev-dependencies]
+bincode = "1.1"
+criterion = "0.2"
+serde = "1.0"
+serde_derive = { git = "https://github.com/servo/serde", branch = "deserialize_from_enums10", features = ["deserialize_in_place"] }
+
+[features]
+default = ["derive"]
+derive = ["peek-poke-derive"]
+extras = ["derive", "euclid"]
+
+[[bench]]
+name = "versus_bincode"
+harness = false
+
+[profile.release]
+opt-level = 2
