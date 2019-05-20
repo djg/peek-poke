@@ -6,7 +6,9 @@ fn poke_into<V: PeekPoke>(a: &V) -> Vec<u8> {
     let end_ptr = a.poke_into(v.as_mut_ptr());
     let new_size = end_ptr as usize - v.as_ptr() as usize;
     assert!(new_size <= v.capacity());
-    unsafe { v.set_len(new_size); }
+    unsafe {
+        v.set_len(new_size);
+    }
     v
 }
 
@@ -156,6 +158,16 @@ fn test_phantom_data() {
         y: 42,
         _marker: PhantomData,
     });
+}
+
+#[test]
+fn test_generic() {
+    #[derive(Debug, PartialEq, Eq, PeekPoke)]
+    struct Foo<T> {
+        x: T,
+        y: T,
+    }
+    the_same(Foo { x: 19.0, y: 42.0 });
 }
 
 #[cfg(feature = "extras")]
