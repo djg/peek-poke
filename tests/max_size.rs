@@ -32,14 +32,12 @@ fn test_option() {
     );
 }
 
-/*
 #[test]
 fn test_fixed_size_array() {
     assert_eq!(<[u32; 32]>::max_size(), 32 * size_of::<u32>());
     assert_eq!(<[u64; 8]>::max_size(), 8 * size_of::<u64>());
     assert_eq!(<[u8; 19]>::max_size(), 19 * size_of::<u8>());
 }
- */
 
 #[test]
 fn test_tuple() {

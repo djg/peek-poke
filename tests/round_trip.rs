@@ -65,14 +65,12 @@ fn test_option() {
     the_same(None::<usize>);
 }
 
-/*
 #[test]
 fn test_fixed_size_array() {
     the_same([24u32; 32]);
     the_same([1u64, 2, 3, 4, 5, 6, 7, 8]);
     the_same([0u8; 19]);
 }
- */
 
 #[test]
 fn test_tuple() {
