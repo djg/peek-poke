@@ -71,7 +71,7 @@ pub fn for_enum(name: &Ident, enum_data: &DataEnum) -> TokenStream {
         let field_prefix = match variant.fields {
             Fields::Unit => quote! {},
             Fields::Named(_) => quote! {},
-            Fields::Unnamed(_) => quote! { __ },
+            Fields::Unnamed(_) => quote! { __self_ },
         };
 
         let fields_expr = match &variant.fields {

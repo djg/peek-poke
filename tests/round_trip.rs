@@ -1,7 +1,7 @@
-use peek_poke::PeekPoke;
+use peek_poke::{Peek, Poke, PeekPoke};
 use std::{fmt::Debug, marker::PhantomData};
 
-fn poke_into<V: PeekPoke>(a: &V) -> Vec<u8> {
+fn poke_into<V: Peek + Poke>(a: &V) -> Vec<u8> {
     let mut v = <Vec<u8>>::with_capacity(<V>::max_size());
     let end_ptr = a.poke_into(v.as_mut_ptr());
     let new_size = end_ptr as usize - v.as_ptr() as usize;
@@ -14,7 +14,7 @@ fn poke_into<V: PeekPoke>(a: &V) -> Vec<u8> {
 
 fn the_same<V>(a: V)
 where
-    V: PartialEq + Debug + PeekPoke,
+    V: PartialEq + Debug + Peek + Poke,
 {
     let v = poke_into(&a);
     let mut b: V = unsafe { std::mem::uninitialized() };

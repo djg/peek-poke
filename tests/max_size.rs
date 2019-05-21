@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use peek_poke::PeekPoke;
+use peek_poke::{PeekPoke, Poke};
 use std::{marker::PhantomData, mem::size_of};
 
 #[test]
@@ -68,7 +68,10 @@ fn test_enum() {
         AnotherNoArg,
         StructLike { x: usize, y: f32 },
     }
-    assert_eq!(TestEnum::max_size(), <u8>::max_size() + 2 * <usize>::max_size());
+    assert_eq!(
+        TestEnum::max_size(),
+        <u8>::max_size() + 2 * <usize>::max_size()
+    );
 }
 
 #[test]

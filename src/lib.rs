@@ -28,15 +28,42 @@ fn peek_from(v: &mut [u8], bytes: *const u8) -> *const u8 {
 #[cfg(feature = "extras")]
 mod euclid;
 
-pub trait PeekPoke {
+pub trait Poke {
     fn max_size() -> usize;
     fn poke_into(&self, bytes: *mut u8) -> *mut u8;
+}
+
+pub trait Peek: Poke {
     fn peek_from(&mut self, bytes: *const u8) -> *const u8;
+}
+
+macro_rules! impl_poke_for_deref {
+    (<$($desc:tt)+) => {
+        impl <$($desc)+ {
+            #[inline(always)]
+            fn max_size() -> usize {
+                <T>::max_size()
+            }
+            fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+                (**self).poke_into(bytes)
+            }
+        }
+    }
+}
+
+impl_poke_for_deref!(<'a, T: Poke> Poke for &'a T);
+impl_poke_for_deref!(<'a, T: Poke> Poke for &'a mut T);
+
+impl<'a, T: Peek> Peek for &'a mut T {
+    #[inline(always)]
+    fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+        (**self).peek_from(bytes)
+    }
 }
 
 macro_rules! impl_for_integer {
     ($ty:ty) => {
-        impl PeekPoke for $ty {
+        impl Poke for $ty {
             #[inline(always)]
             fn max_size() -> usize {
                 size_of::<Self>()
@@ -45,6 +72,8 @@ macro_rules! impl_for_integer {
             fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
                 poke_into(bytes, &self.to_ne_bytes())
             }
+        }
+        impl Peek for $ty {
             #[inline(always)]
             fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
                 let mut int_bytes: [u8; size_of::<$ty>()] = unsafe { uninitialized() };
@@ -68,7 +97,7 @@ impl_for_integer!(u32);
 impl_for_integer!(u64);
 impl_for_integer!(usize);
 
-impl PeekPoke for bool {
+impl Poke for bool {
     #[inline(always)]
     fn max_size() -> usize {
         <u8>::max_size()
@@ -77,6 +106,8 @@ impl PeekPoke for bool {
     fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         (*self as u8).poke_into(bytes)
     }
+}
+impl Peek for bool {
     #[inline]
     fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
         let mut int_bool = 0u8;
@@ -88,7 +119,7 @@ impl PeekPoke for bool {
 
 macro_rules! impl_for_float {
     ($fty:ty as $ity:ty) => {
-        impl PeekPoke for $fty {
+        impl Poke for $fty {
             #[inline(always)]
             fn max_size() -> usize {
                 <$ity>::max_size()
@@ -97,6 +128,8 @@ macro_rules! impl_for_float {
             fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
                 self.to_bits().poke_into(bytes)
             }
+        }
+        impl Peek for $fty {
             #[inline(always)]
             fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
                 let mut tmp: $ity = 0;
@@ -111,7 +144,7 @@ macro_rules! impl_for_float {
 impl_for_float!(f32 as u32);
 impl_for_float!(f64 as u64);
 
-impl<T> PeekPoke for PhantomData<T> {
+impl<T> Poke for PhantomData<T> {
     #[inline(always)]
     fn max_size() -> usize {
         0
@@ -120,6 +153,8 @@ impl<T> PeekPoke for PhantomData<T> {
     fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         bytes
     }
+}
+impl<T> Peek for PhantomData<T> {
     #[inline(always)]
     fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
         *self = PhantomData;
@@ -127,10 +162,7 @@ impl<T> PeekPoke for PhantomData<T> {
     }
 }
 
-impl<T> PeekPoke for Option<T>
-where
-    T: PeekPoke,
-{
+impl<T: Poke> Poke for Option<T> {
     #[inline(always)]
     fn max_size() -> usize {
         <u8>::max_size() + <T>::max_size()
@@ -146,6 +178,8 @@ where
             }
         }
     }
+}
+impl<T: Peek> Peek for Option<T> {
     #[inline]
     fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
         let mut variant = 0u8;
@@ -168,13 +202,15 @@ where
 
 macro_rules! impl_for_arrays {
     ($($len:tt)+) => {
-        $(impl<T: PeekPoke> PeekPoke for [T; $len] {
+        $(impl<T: Poke> Poke for [T; $len] {
             fn max_size() -> usize {
                 $len * <T>::max_size()
             }
             fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
                 self.iter().fold(bytes, |bytes, e| e.poke_into(bytes))
             }
+        }
+        impl<T: Peek> Peek for [T; $len] {
             fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
                 self.iter_mut().fold(bytes, |bytes, e| e.peek_from(bytes))
             }
@@ -189,13 +225,15 @@ impl_for_arrays! {
     31 32
 }
 
-impl PeekPoke for () {
+impl Poke for () {
     fn max_size() -> usize {
         0
     }
     fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         bytes
     }
+}
+impl Peek for () {
     fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
         *self = ();
         bytes
@@ -204,7 +242,7 @@ impl PeekPoke for () {
 
 macro_rules! impl_for_tuple {
     ($($n:tt: $ty:ident),+) => {
-        impl<$($ty: PeekPoke),+> PeekPoke for ($($ty,)+) {
+        impl<$($ty: Poke),+> Poke for ($($ty,)+) {
             #[inline(always)]
             fn max_size() -> usize {
                 0 $(+ <$ty>::max_size())+
@@ -213,6 +251,8 @@ macro_rules! impl_for_tuple {
                 $(let bytes = self.$n.poke_into(bytes);)+
                 bytes
             }
+        }
+        impl<$($ty: Peek),+> Peek for ($($ty,)+) {
             fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
                 $(let bytes = self.$n.peek_from(bytes);)+
                 bytes

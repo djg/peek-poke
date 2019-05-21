@@ -4,7 +4,7 @@ extern crate serde_derive;
 use criterion::{black_box, criterion_group, criterion_main, Benchmark, Criterion};
 
 use bincode::{deserialize_in_place, serialize_into};
-use peek_poke::PeekPoke;
+use peek_poke::{Peek, PeekPoke, Poke};
 use std::{io, ptr};
 
 #[derive(Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
@@ -72,7 +72,7 @@ impl UnsafeReader {
         unsafe {
             let end = buf.as_ptr().add(buf.len());
             let start = buf.as_ptr();
-            UnsafeReader { start, end, }
+            UnsafeReader { start, end }
         }
     }
 
@@ -90,7 +90,10 @@ impl UnsafeReader {
     fn read_internal(&mut self, buf: &mut [u8]) {
         // this is safe because we panic if start + buf.len() > end
         unsafe {
-            assert!(self.start.add(buf.len()) <= self.end, "UnsafeReader: read past end of target");
+            assert!(
+                self.start.add(buf.len()) <= self.end,
+                "UnsafeReader: read past end of target"
+            );
             ptr::copy_nonoverlapping(self.start, buf.as_mut_ptr(), buf.len());
             self.start = self.start.add(buf.len());
         }
@@ -156,9 +159,8 @@ fn criterion_benchmark(c: &mut Criterion) {
         "struct::deserialize",
         Benchmark::new("peek_poke::peek_from", |b| {
             let bytes = vec![
-                0u8, 0, 128, 63, 0, 0, 0, 64, 0, 0, 128, 64, 0, 0, 160, 64, 3, 0, 0, 0, 0, 0,
-                0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0,
-                0, 0, 1,
+                0u8, 0, 128, 63, 0, 0, 0, 64, 0, 0, 128, 64, 0, 0, 160, 64, 3, 0, 0, 0, 0, 0, 0, 0,
+                4, 0, 0, 0, 5, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 1,
             ];
             let mut result: CommonItemProperties = unsafe { std::mem::uninitialized() };
             b.iter(|| {
@@ -167,12 +169,11 @@ fn criterion_benchmark(c: &mut Criterion) {
         })
         .with_function("bincode::deserialize", |b| {
             let bytes = vec![
-                0u8, 0, 128, 63, 0, 0, 0, 64, 0, 0, 128, 64, 0, 0, 160, 64, 3, 0, 0, 0, 0, 0,
-                0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0,
-                0, 0, 1,
+                0u8, 0, 128, 63, 0, 0, 0, 64, 0, 0, 128, 64, 0, 0, 160, 64, 3, 0, 0, 0, 0, 0, 0, 0,
+                4, 0, 0, 0, 5, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 1,
             ];
             let mut result: CommonItemProperties = unsafe { std::mem::uninitialized() };
-	    let reader = UnsafeReader::new(&bytes);
+            let reader = UnsafeReader::new(&bytes);
             b.iter(|| {
                 let reader = bincode::IoReader::new(reader);
                 black_box(deserialize_in_place(reader, &mut result));

@@ -106,7 +106,7 @@ fn get_peek_from_init_expr_for_fields(fields: &Fields) -> TokenStream {
                 let mut exprs = Vec::with_capacity(unnamed_fields.unnamed.len());
 
                 for (n, field) in unnamed_fields.unnamed.iter().enumerate() {
-                    let field_name = TokenStream::from_str(&format!("__{}", n)).unwrap();
+                    let field_name = TokenStream::from_str(&format!("__self_{}", n)).unwrap();
                     let field_type = &field.ty;
 
                     exprs.push(quote! {
@@ -146,7 +146,7 @@ pub fn for_enum(name: &Ident, enum_data: &DataEnum) -> TokenStream {
     for (i, variant) in enum_data.variants.iter().enumerate() {
         let variant_name = &variant.ident;
         let prefix = match &variant.fields {
-            Fields::Unnamed(..) => quote! {__},
+            Fields::Unnamed(..) => quote! {__self_},
             _ => quote! {},
         };
         let (variant_expr, fields_expr) = get_peek_from_expr_for_fields(prefix, &variant.fields);
