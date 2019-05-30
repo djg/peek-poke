@@ -1,4 +1,4 @@
-use peek_poke::{Peek, Poke, PeekPoke};
+use peek_poke::{Peek, PeekPoke, Poke};
 use std::{fmt::Debug, marker::PhantomData};
 
 fn poke_into<V: Peek + Poke>(a: &V) -> Vec<u8> {
@@ -12,12 +12,26 @@ fn poke_into<V: Peek + Poke>(a: &V) -> Vec<u8> {
     v
 }
 
+#[cfg(not(feature = "option_copy"))]
 fn the_same<V>(a: V)
 where
-    V: PartialEq + Debug + Peek + Poke,
+    V: Debug + Default + PartialEq + Peek + Poke,
 {
     let v = poke_into(&a);
-    let mut b: V = unsafe { std::mem::uninitialized() };
+    let mut b = V::default();
+    let end_ptr = unsafe { b.peek_from(v.as_ptr()) };
+    let size = end_ptr as usize - v.as_ptr() as usize;
+    assert_eq!(size, v.len());
+    assert_eq!(a, b);
+}
+
+#[cfg(feature = "option_copy")]
+fn the_same<V>(a: V)
+where
+    V: Copy + Debug + PartialEq + Peek + Poke,
+{
+    let v = poke_into(&a);
+    let mut b = a;
     let end_ptr = unsafe { b.peek_from(v.as_ptr()) };
     let size = end_ptr as usize - v.as_ptr() as usize;
     assert_eq!(size, v.len());
@@ -82,7 +96,7 @@ fn test_tuple() {
 
 #[test]
 fn test_basic_struct() {
-    #[derive(PartialEq, Debug, PeekPoke)]
+    #[derive(Copy, Clone, Debug, Default, PartialEq, PeekPoke)]
     struct Bar {
         a: u32,
         b: u32,
@@ -102,7 +116,7 @@ fn test_basic_struct() {
 
 #[test]
 fn test_enum() {
-    #[derive(PartialEq, Debug, PeekPoke)]
+    #[derive(Clone, Copy, Debug, PartialEq, PeekPoke)]
     enum TestEnum {
         NoArg,
         OneArg(usize),
@@ -110,6 +124,13 @@ fn test_enum() {
         AnotherNoArg,
         StructLike { x: usize, y: f32 },
     }
+
+    impl Default for TestEnum {
+        fn default() -> Self {
+            TestEnum::NoArg
+        }
+    }
+
     the_same(TestEnum::NoArg);
     the_same(TestEnum::OneArg(4));
     the_same(TestEnum::Args(4, 5));
@@ -133,6 +154,13 @@ fn test_enum_cstyle() {
         Inset = 8,
         Outset = 9,
     }
+
+    impl Default for BorderStyle {
+        fn default() -> Self {
+            BorderStyle::None
+        }
+    }
+
     the_same(BorderStyle::None);
     the_same(BorderStyle::Solid);
     the_same(BorderStyle::Double);
@@ -148,7 +176,7 @@ fn test_enum_cstyle() {
 #[test]
 fn test_phantom_data() {
     struct Bar;
-    #[derive(Debug, PartialEq, Eq, PeekPoke)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PeekPoke)]
     struct Foo {
         x: u32,
         y: u32,
@@ -163,7 +191,7 @@ fn test_phantom_data() {
 
 #[test]
 fn test_generic() {
-    #[derive(Debug, PartialEq, Eq, PeekPoke)]
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PeekPoke)]
     struct Foo<T> {
         x: T,
         y: T,
@@ -171,7 +199,7 @@ fn test_generic() {
     the_same(Foo { x: 19.0, y: 42.0 });
 }
 
-#[cfg(feature = "extras")]
+#[cfg(all(feature = "extras", feature = "option_copy"))]
 mod extra_tests {
     use super::*;
     use euclid::{Point2D, Rect, SideOffsets2D, Size2D, Transform3D, Vector2D};
