@@ -42,7 +42,7 @@ pub enum ClipId {
 }
 
 #[repr(C)]
-#[derive(Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, PeekPoke, Serialize)]
 pub struct ItemTag(u64, u16);
 
 #[repr(C)]

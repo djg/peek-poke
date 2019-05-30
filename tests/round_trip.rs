@@ -58,6 +58,7 @@ fn test_bool() {
     the_same(false);
 }
 
+#[cfg(any(feature = "option_copy", feature = "option_default"))]
 #[test]
 fn test_option() {
     the_same(Some(5usize));
@@ -86,6 +87,7 @@ fn test_basic_struct() {
         a: u32,
         b: u32,
         c: u32,
+        #[cfg(any(feature = "option_copy", feature = "option_default"))]
         d: Option<u32>,
     }
 
@@ -93,6 +95,7 @@ fn test_basic_struct() {
         a: 2,
         b: 4,
         c: 42,
+        #[cfg(any(feature = "option_copy", feature = "option_default"))]
         d: None,
     });
 }

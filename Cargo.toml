@@ -21,6 +21,8 @@ serde_derive = { git = "https://github.com/servo/serde", branch = "deserialize_f
 default = ["derive"]
 derive = ["peek-poke-derive"]
 extras = ["derive", "euclid"]
+option_copy = []
+option_default = []
 
 [[bench]]
 name = "versus_bincode"

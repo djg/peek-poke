@@ -48,6 +48,7 @@ pub struct CommonItemProperties {
     pub clip_rect: Rect,
     pub clip_id: ClipId,
     pub spatial_id: SpatialId,
+    #[cfg(any(feature = "option_copy", feature = "option_default"))]
     pub hit_info: Option<ItemTag>,
     pub is_backface_visible: bool,
 }
@@ -89,6 +90,7 @@ pub fn main() {
         },
         clip_id: ClipId::Clip(5, PipelineId(1, 2)),
         spatial_id: SpatialId(3, PipelineId(4, 5)),
+        #[cfg(any(feature = "option_copy", feature = "option_default"))]
         hit_info: None,
         is_backface_visible: true,
     };

@@ -13,8 +13,11 @@ pub use peek_poke_derive::*;
 
 use core::{
     marker::PhantomData,
-    mem::{size_of, uninitialized, transmute},
+    mem::{size_of, transmute},
 };
+
+#[cfg(feature = "option_copy")]
+use core::mem::uninitialized;
 
 // Helper to copy a slice of bytes `bytes` into a buffer of bytes pointed to by
 // `dest`.
@@ -254,7 +257,9 @@ unsafe impl<T: Poke> Poke for Option<T> {
         }
     }
 }
-impl<T: Peek> Peek for Option<T> {
+
+#[cfg(feature = "option_copy")]
+impl<T: Copy + Peek> Peek for Option<T> {
     #[inline]
     unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
         let mut variant = 0u8;
@@ -266,6 +271,28 @@ impl<T: Peek> Peek for Option<T> {
             }
             1 => {
                 let mut __0: T = uninitialized();
+                let bytes = __0.peek_from(bytes);
+                *self = Some(__0);
+                bytes
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
+#[cfg(feature = "option_default")]
+impl<T: Default + Peek> Peek for Option<T> {
+    #[inline]
+    unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+        let mut variant = 0u8;
+        let bytes = variant.peek_from(bytes);
+        match variant {
+            0 => {
+                *self = None;
+                bytes
+            }
+            1 => {
+                let mut __0 = T::default();
                 let bytes = __0.peek_from(bytes);
                 *self = Some(__0);
                 bytes
