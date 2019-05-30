@@ -16,19 +16,21 @@ use core::{
     mem::{size_of, uninitialized},
 };
 
+// Helper to copy a slice of bytes `bytes` into a buffer of bytes pointed to by
+// `dest`.
 #[inline(always)]
-fn poke_into(bytes: *mut u8, v: &[u8]) -> *mut u8 {
+fn copy_bytes_to(bytes: &[u8], dest: *mut u8) -> *mut u8 {
     unsafe {
-        v.as_ptr().copy_to_nonoverlapping(bytes, v.len());
-        bytes.add(v.len())
+        bytes.as_ptr().copy_to_nonoverlapping(dest, bytes.len());
+        dest.add(bytes.len())
     }
 }
 
 #[inline(always)]
-fn peek_from(v: &mut [u8], bytes: *const u8) -> *const u8 {
+fn copy_to_slice(src: *const u8, slice: &mut [u8]) -> *const u8 {
     unsafe {
-        bytes.copy_to_nonoverlapping(v.as_mut_ptr(), v.len());
-        bytes.add(v.len())
+        src.copy_to_nonoverlapping(slice.as_mut_ptr(), slice.len());
+        src.add(slice.len())
     }
 }
 
@@ -177,14 +179,14 @@ macro_rules! impl_for_integer {
             }
             #[inline(always)]
             unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
-                poke_into(bytes, &self.to_ne_bytes())
+                copy_bytes_to(&self.to_ne_bytes(), bytes)
             }
         }
         impl Peek for $ty {
             #[inline(always)]
             unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
-                let mut int_bytes: [u8; size_of::<$ty>()] =  uninitialized();
-                let ptr = peek_from(&mut int_bytes, bytes);
+                let mut int_bytes: [u8; size_of::<$ty>()] = Default::default();
+                let ptr = copy_to_slice(bytes, &mut int_bytes);
                 *self = <$ty>::from_ne_bytes(int_bytes);
                 ptr
             }
