@@ -53,14 +53,14 @@ pub struct CommonItemProperties {
 }
 
 #[inline(never)]
-pub fn test<T: Poke>(bytes: *mut u8, x: &T) -> *mut u8 {
+unsafe fn test<T: Poke>(bytes: *mut u8, x: &T) -> *mut u8 {
     x.poke_into(bytes)
 }
 
 fn poke_into<T: Poke>(bytes: &mut Vec<u8>, x: &T) {
     bytes.reserve(<T>::max_size());
     let ptr = bytes.as_mut_ptr();
-    let new_ptr = test(ptr, x);
+    let new_ptr = unsafe { test(ptr, x) };
     let new_len = (new_ptr as usize) - (bytes.as_ptr() as usize);
     unsafe {
         bytes.set_len(new_len);
@@ -68,14 +68,14 @@ fn poke_into<T: Poke>(bytes: &mut Vec<u8>, x: &T) {
 }
 
 #[inline(never)]
-pub fn test1<T: Peek>(x: &mut T, bytes: *const u8) -> *const u8 {
+unsafe fn test1<T: Peek>(x: &mut T, bytes: *const u8) -> *const u8 {
     x.peek_from(bytes)
 }
 
 fn peek_from<T: Peek>(x: &mut T, bytes: &[u8]) -> usize {
     assert!(bytes.len() >= <T>::max_size());
     let ptr = bytes.as_ptr();
-    let new_ptr = test1(x, ptr);
+    let new_ptr = unsafe { test1(x, ptr) };
     let size = (new_ptr as usize) - (ptr as usize);
     assert!(size <= bytes.len());
     size

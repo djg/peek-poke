@@ -27,14 +27,14 @@ pub fn get_impl(input: DeriveInput) -> TokenStream {
         #[automatically_derived]
         #[allow(unused_qualifications)]
         #[allow(unused)]
-        impl #impl_generics peek_poke::Poke for #name #ty_generics #where_clause {
+        unsafe impl #impl_generics peek_poke::Poke for #name #ty_generics #where_clause {
             #[inline(always)]
             fn max_size() -> usize {
                 #max_size
             }
 
             #[inline(always)]
-            fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+            unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
                 #poke_into
             }
         }
@@ -49,7 +49,7 @@ pub fn get_impl(input: DeriveInput) -> TokenStream {
         #[allow(unused)]
         impl #impl_generics peek_poke::Peek for #name #ty_generics #where_clause {
             #[inline(always)]
-            fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+            unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
                 #peek_from
             }
         }

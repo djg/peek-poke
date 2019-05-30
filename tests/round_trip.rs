@@ -3,7 +3,7 @@ use std::{fmt::Debug, marker::PhantomData};
 
 fn poke_into<V: Peek + Poke>(a: &V) -> Vec<u8> {
     let mut v = <Vec<u8>>::with_capacity(<V>::max_size());
-    let end_ptr = a.poke_into(v.as_mut_ptr());
+    let end_ptr = unsafe { a.poke_into(v.as_mut_ptr()) };
     let new_size = end_ptr as usize - v.as_ptr() as usize;
     assert!(new_size <= v.capacity());
     unsafe {
@@ -18,7 +18,7 @@ where
 {
     let v = poke_into(&a);
     let mut b: V = unsafe { std::mem::uninitialized() };
-    let end_ptr = b.peek_from(v.as_ptr());
+    let end_ptr = unsafe { b.peek_from(v.as_ptr()) };
     let size = end_ptr as usize - v.as_ptr() as usize;
     assert_eq!(size, v.len());
     assert_eq!(a, b);

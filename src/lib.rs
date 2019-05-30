@@ -1,3 +1,11 @@
+//! Fast binary serialization and deserialization for types with a known maximum size.
+//!
+//! ## Binary Encoding Scheme
+//!
+//! ## Usage
+//!
+//! ## Comparison to bincode
+
 #![no_std]
 
 #[cfg(feature = "derive")]
@@ -6,13 +14,12 @@ pub use peek_poke_derive::*;
 use core::{
     marker::PhantomData,
     mem::{size_of, uninitialized},
-    ptr::copy_nonoverlapping,
 };
 
 #[inline(always)]
 fn poke_into(bytes: *mut u8, v: &[u8]) -> *mut u8 {
     unsafe {
-        copy_nonoverlapping(v.as_ptr(), bytes, v.len());
+        v.as_ptr().copy_to_nonoverlapping(bytes, v.len());
         bytes.add(v.len())
     }
 }
@@ -20,7 +27,7 @@ fn poke_into(bytes: *mut u8, v: &[u8]) -> *mut u8 {
 #[inline(always)]
 fn peek_from(v: &mut [u8], bytes: *const u8) -> *const u8 {
     unsafe {
-        copy_nonoverlapping(bytes, v.as_mut_ptr(), v.len());
+        bytes.copy_to_nonoverlapping(v.as_mut_ptr(), v.len());
         bytes.add(v.len())
     }
 }
@@ -28,23 +35,123 @@ fn peek_from(v: &mut [u8], bytes: *const u8) -> *const u8 {
 #[cfg(feature = "extras")]
 mod euclid;
 
-pub trait Poke {
+/// A trait for values that provide serialization into buffers of bytes.
+///
+/// # Example
+///
+/// ```no_run
+/// use peek_poke::Poke;
+///
+/// struct Bar {
+///     a: u32,
+///     b: u8,
+///     c: i16,
+/// }
+///
+/// unsafe impl Poke for Bar {
+///     fn max_size() -> usize {
+///         <u32>::max_size() + <u8>::max_size() + <i16>::max_size()
+///     }
+///     unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+///         let bytes = self.a.poke_into(bytes);
+///         let bytes = self.b.poke_into(bytes);
+///         self.c.poke_into(bytes)
+///     }
+/// }
+/// ```
+///
+/// # Safety
+///
+/// The `Poke` trait is an `unsafe` trait for the reasons, and implementors must
+/// ensure that they adhere to these contracts:
+///
+/// * `max_size()` query and calculations in general must be correct.  Callers
+///    of this trait are expected to rely on the contract defined on each
+///    method, and implementors must ensure such contracts remain true.
+pub unsafe trait Poke {
+    /// Return the maximum number of bytes that the serialized version of `Self`
+    /// will occupy.
+    ///
+    /// # Safety
+    ///
+    /// Implementors of `Poke` guarantee to not write more than the result of
+    /// calling `max_size()` into the buffer pointed to by `bytes` when
+    /// `poke_into()` is called.
     fn max_size() -> usize;
-    fn poke_into(&self, bytes: *mut u8) -> *mut u8;
+    /// Serialize into the buffer pointed to by `bytes`.
+    ///
+    /// Returns a pointer to the next byte after the serialized representation of `Self`.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because undefined behavior can result if the
+    /// caller does not ensure all of the following:
+    ///
+    /// * `bytes` must denote a valid pointer to a block of memory.
+    ///
+    /// * `bytes` must pointer to at least the number of bytes returned by
+    ///   `max_size()`.
+    unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8;
 }
 
+/// A trait for values that provide deserialization from buffers of bytes.
+///
+/// # Example
+///
+/// ```ignore
+/// use peek_poke::Peek;
+///
+/// struct Bar {
+///     a: u32,
+///     b: u8,
+///     c: i16,
+/// }
+///
+/// ...
+///
+/// impl Peek for Bar {
+///     unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+///         let bytes = self.a.peek_from(bytes);
+///         let bytes = self.b.peek_from(bytes);
+///         self.c.peek_from(bytes)
+///     }
+/// }
+/// ```
+///
+/// # Safety
+///
+/// The `Peek` trait contains unsafe methods for the following reasons, and
+/// implementors must ensure that they adhere to these contracts:
+///
+/// * Callers of this trait are expected to rely on the contract defined on each
+///   method, and implementors must ensure that `peek_from()` doesn't read more
+///   bytes from `bytes` than is returned by `Peek::max_size()`.
 pub trait Peek: Poke {
-    fn peek_from(&mut self, bytes: *const u8) -> *const u8;
+    /// Deserialize from the buffer pointed to by `bytes`.
+    ///
+    /// Returns a pointer to the next byte after the unconsumed bytes not used
+    /// to deserialize the representation of `Self`.
+    ///
+    /// # Safety
+    ///
+    /// This function is unsafe because undefined behavior can result if the
+    /// caller does not ensure all of the following:
+    ///
+    /// * `bytes` must denote a valid pointer to a block of memory.
+    ///
+    /// * `bytes` must pointer to at least the number of bytes returned by
+    ///   `Poke::max_size()`.
+    unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8;
 }
 
 macro_rules! impl_poke_for_deref {
     (<$($desc:tt)+) => {
-        impl <$($desc)+ {
+        unsafe impl <$($desc)+ {
             #[inline(always)]
             fn max_size() -> usize {
                 <T>::max_size()
             }
-            fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+            unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
                 (**self).poke_into(bytes)
             }
         }
@@ -56,60 +163,53 @@ impl_poke_for_deref!(<'a, T: Poke> Poke for &'a mut T);
 
 impl<'a, T: Peek> Peek for &'a mut T {
     #[inline(always)]
-    fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+    unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
         (**self).peek_from(bytes)
     }
 }
 
 macro_rules! impl_for_integer {
-    ($ty:ty) => {
-        impl Poke for $ty {
+    ($($ty:ty)+) => {
+        $(unsafe impl Poke for $ty {
             #[inline(always)]
             fn max_size() -> usize {
                 size_of::<Self>()
             }
             #[inline(always)]
-            fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+            unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
                 poke_into(bytes, &self.to_ne_bytes())
             }
         }
         impl Peek for $ty {
             #[inline(always)]
-            fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
-                let mut int_bytes: [u8; size_of::<$ty>()] = unsafe { uninitialized() };
+            unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+                let mut int_bytes: [u8; size_of::<$ty>()] =  uninitialized();
                 let ptr = peek_from(&mut int_bytes, bytes);
                 *self = <$ty>::from_ne_bytes(int_bytes);
                 ptr
             }
-        }
+        })+
     };
 }
 
-impl_for_integer!(i8);
-impl_for_integer!(i16);
-impl_for_integer!(i32);
-impl_for_integer!(i64);
-impl_for_integer!(isize);
+impl_for_integer! {
+    i8 i16 i32 i64 isize
+    u8 u16 u32 u64 usize
+}
 
-impl_for_integer!(u8);
-impl_for_integer!(u16);
-impl_for_integer!(u32);
-impl_for_integer!(u64);
-impl_for_integer!(usize);
-
-impl Poke for bool {
+unsafe impl Poke for bool {
     #[inline(always)]
     fn max_size() -> usize {
         <u8>::max_size()
     }
     #[inline]
-    fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+    unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         (*self as u8).poke_into(bytes)
     }
 }
 impl Peek for bool {
     #[inline]
-    fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+    unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
         let mut int_bool = 0u8;
         let ptr = int_bool.peek_from(bytes);
         *self = int_bool != 0;
@@ -119,19 +219,19 @@ impl Peek for bool {
 
 macro_rules! impl_for_float {
     ($fty:ty as $ity:ty) => {
-        impl Poke for $fty {
+        unsafe impl Poke for $fty {
             #[inline(always)]
             fn max_size() -> usize {
                 <$ity>::max_size()
             }
             #[inline]
-            fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+            unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
                 self.to_bits().poke_into(bytes)
             }
         }
         impl Peek for $fty {
             #[inline(always)]
-            fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+            unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
                 let mut tmp: $ity = 0;
                 let ptr = tmp.peek_from(bytes);
                 *self = <$fty>::from_bits(tmp);
@@ -144,31 +244,31 @@ macro_rules! impl_for_float {
 impl_for_float!(f32 as u32);
 impl_for_float!(f64 as u64);
 
-impl<T> Poke for PhantomData<T> {
+unsafe impl<T> Poke for PhantomData<T> {
     #[inline(always)]
     fn max_size() -> usize {
         0
     }
     #[inline(always)]
-    fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+    unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         bytes
     }
 }
 impl<T> Peek for PhantomData<T> {
     #[inline(always)]
-    fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+    unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
         *self = PhantomData;
         bytes
     }
 }
 
-impl<T: Poke> Poke for Option<T> {
+unsafe impl<T: Poke> Poke for Option<T> {
     #[inline(always)]
     fn max_size() -> usize {
         <u8>::max_size() + <T>::max_size()
     }
     #[inline]
-    fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+    unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         match self {
             None => 0u8.poke_into(bytes),
             Some(ref v) => {
@@ -181,7 +281,7 @@ impl<T: Poke> Poke for Option<T> {
 }
 impl<T: Peek> Peek for Option<T> {
     #[inline]
-    fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+    unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
         let mut variant = 0u8;
         let bytes = variant.peek_from(bytes);
         match variant {
@@ -190,7 +290,7 @@ impl<T: Peek> Peek for Option<T> {
                 bytes
             }
             1 => {
-                let mut __0: T = unsafe { uninitialized() };
+                let mut __0: T = uninitialized();
                 let bytes = __0.peek_from(bytes);
                 *self = Some(__0);
                 bytes
@@ -202,16 +302,16 @@ impl<T: Peek> Peek for Option<T> {
 
 macro_rules! impl_for_arrays {
     ($($len:tt)+) => {
-        $(impl<T: Poke> Poke for [T; $len] {
+        $(unsafe impl<T: Poke> Poke for [T; $len] {
             fn max_size() -> usize {
                 $len * <T>::max_size()
             }
-            fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+            unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
                 self.iter().fold(bytes, |bytes, e| e.poke_into(bytes))
             }
         }
         impl<T: Peek> Peek for [T; $len] {
-            fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+            unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
                 self.iter_mut().fold(bytes, |bytes, e| e.peek_from(bytes))
             }
         })+
@@ -225,16 +325,16 @@ impl_for_arrays! {
     31 32
 }
 
-impl Poke for () {
+unsafe impl Poke for () {
     fn max_size() -> usize {
         0
     }
-    fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+    unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         bytes
     }
 }
 impl Peek for () {
-    fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+    unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
         *self = ();
         bytes
     }
@@ -242,18 +342,18 @@ impl Peek for () {
 
 macro_rules! impl_for_tuple {
     ($($n:tt: $ty:ident),+) => {
-        impl<$($ty: Poke),+> Poke for ($($ty,)+) {
+        unsafe impl<$($ty: Poke),+> Poke for ($($ty,)+) {
             #[inline(always)]
             fn max_size() -> usize {
                 0 $(+ <$ty>::max_size())+
             }
-            fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
+            unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
                 $(let bytes = self.$n.poke_into(bytes);)+
                 bytes
             }
         }
         impl<$($ty: Peek),+> Peek for ($($ty,)+) {
-            fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+            unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
                 $(let bytes = self.$n.peek_from(bytes);)+
                 bytes
             }

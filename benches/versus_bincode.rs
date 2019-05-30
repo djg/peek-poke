@@ -133,7 +133,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                     hit_info: None,
                     is_backface_visible: true,
                 };
-                black_box(black_box(&my_struct).poke_into(ptr));
+                black_box(unsafe { black_box(&my_struct).poke_into(ptr) });
             })
         })
         .with_function("bincode::serialize", |b| {
@@ -164,7 +164,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             ];
             let mut result: CommonItemProperties = unsafe { std::mem::uninitialized() };
             b.iter(|| {
-                black_box(result.peek_from(black_box(bytes.as_ptr())));
+                black_box(unsafe { result.peek_from(black_box(bytes.as_ptr())) });
             })
         })
         .with_function("bincode::deserialize", |b| {
