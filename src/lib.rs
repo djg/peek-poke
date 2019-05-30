@@ -13,7 +13,7 @@ pub use peek_poke_derive::*;
 
 use core::{
     marker::PhantomData,
-    mem::{size_of, uninitialized},
+    mem::{size_of, uninitialized, transmute},
 };
 
 // Helper to copy a slice of bytes `bytes` into a buffer of bytes pointed to by
@@ -170,7 +170,7 @@ impl<'a, T: Peek> Peek for &'a mut T {
     }
 }
 
-macro_rules! impl_for_integer {
+macro_rules! impl_for_primitive {
     ($($ty:ty)+) => {
         $(unsafe impl Poke for $ty {
             #[inline(always)]
@@ -179,24 +179,24 @@ macro_rules! impl_for_integer {
             }
             #[inline(always)]
             unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
-                copy_bytes_to(&self.to_ne_bytes(), bytes)
+                let int_bytes = transmute::<_, &[u8; size_of::<$ty>()]>(self);
+                copy_bytes_to(int_bytes, bytes)
             }
         }
         impl Peek for $ty {
             #[inline(always)]
             unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
-                let mut int_bytes: [u8; size_of::<$ty>()] = Default::default();
-                let ptr = copy_to_slice(bytes, &mut int_bytes);
-                *self = <$ty>::from_ne_bytes(int_bytes);
-                ptr
+                let int_bytes = transmute::<_, &mut [u8; size_of::<$ty>()]>(self);
+                copy_to_slice(bytes, int_bytes)
             }
         })+
     };
 }
 
-impl_for_integer! {
+impl_for_primitive! {
     i8 i16 i32 i64 isize
     u8 u16 u32 u64 usize
+    f32 f64
 }
 
 unsafe impl Poke for bool {
@@ -218,33 +218,6 @@ impl Peek for bool {
         ptr
     }
 }
-
-macro_rules! impl_for_float {
-    ($fty:ty as $ity:ty) => {
-        unsafe impl Poke for $fty {
-            #[inline(always)]
-            fn max_size() -> usize {
-                <$ity>::max_size()
-            }
-            #[inline]
-            unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
-                self.to_bits().poke_into(bytes)
-            }
-        }
-        impl Peek for $fty {
-            #[inline(always)]
-            unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
-                let mut tmp: $ity = 0;
-                let ptr = tmp.peek_from(bytes);
-                *self = <$fty>::from_bits(tmp);
-                ptr
-            }
-        }
-    };
-}
-
-impl_for_float!(f32 as u32);
-impl_for_float!(f64 as u64);
 
 unsafe impl<T> Poke for PhantomData<T> {
     #[inline(always)]
