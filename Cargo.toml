@@ -2,14 +2,14 @@
 
 [package]
 name = "peek-poke"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Dan Glastonbury <dan.glastonbury@gmail.com>"]
 license = "MIT/Apache-2.0"
 edition = "2018"
 
 [dependencies]
 euclid = { version = "*", optional = true }
-peek-poke-derive = { version = "0.1", path = "./peek-poke-derive", optional = true }
+peek-poke-derive = { version = "0.2", path = "./peek-poke-derive", optional = true }
 
 [dev-dependencies]
 bincode = "1.1"
