@@ -1,4 +1,4 @@
-use peek_poke::{Peek, PeekPoke, Poke};
+use peek_poke::{Peek, PeekPoke, Poke,PeekCopy};
 use std::{fmt::Debug, marker::PhantomData};
 
 fn poke_into<V: Peek + Poke>(a: &V) -> Vec<u8> {
@@ -116,7 +116,7 @@ fn test_basic_struct() {
 
 #[test]
 fn test_enum() {
-    #[derive(Clone, Copy, Debug, PartialEq, PeekPoke)]
+    #[derive(Clone, Copy, Debug, PartialEq, PeekCopy, Poke)]
     enum TestEnum {
         NoArg,
         OneArg(usize),
@@ -141,7 +141,7 @@ fn test_enum() {
 #[test]
 fn test_enum_cstyle() {
     #[repr(u32)]
-    #[derive(Clone, Copy, Debug, PartialEq, Eq, PeekPoke)]
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, PeekCopy, Poke)]
     enum BorderStyle {
         None = 0,
         Solid = 1,

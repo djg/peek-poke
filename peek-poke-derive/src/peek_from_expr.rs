@@ -1,4 +1,4 @@
-use crate::max_size_expr;
+use crate::{max_size_expr, peek_poke::Generate};
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use std::{fmt::Display, str::FromStr};
@@ -73,7 +73,7 @@ fn get_peek_from_expr_for_fields<T: ToTokens + Display>(
     }
 }
 
-fn get_peek_from_init_expr_for_fields(fields: &Fields) -> TokenStream {
+fn get_peek_from_init_expr_for_fields(fields: &Fields, gen: Generate) -> TokenStream {
     match fields {
         Fields::Unit => quote! {},
         Fields::Named(named_fields) => {
@@ -90,9 +90,16 @@ fn get_peek_from_init_expr_for_fields(fields: &Fields) -> TokenStream {
 
                     let field_type = &field.ty;
 
-                    exprs.push(quote! {
-                        let mut #field_name: #field_type = unsafe { core::mem::uninitialized() };
-                    });
+                    let init = if gen == Generate::PeekDefault {
+                        quote! {
+                            let mut #field_name = #field_type::default();
+                        }
+                    } else {
+                        quote! {
+                            let mut #field_name: #field_type = unsafe { core::mem::uninitialized() };
+                        }
+                    };
+                    exprs.push(init);
                 }
                 quote! {
                     #(#exprs)*
@@ -109,9 +116,16 @@ fn get_peek_from_init_expr_for_fields(fields: &Fields) -> TokenStream {
                     let field_name = TokenStream::from_str(&format!("__self_{}", n)).unwrap();
                     let field_type = &field.ty;
 
-                    exprs.push(quote! {
-                        let mut #field_name: #field_type = unsafe { core::mem::uninitialized() };
-                    });
+                    let init = if gen == Generate::PeekDefault {
+                        quote! {
+                            let mut #field_name = #field_type::default();
+                        }
+                    } else {
+                        quote! {
+                            let mut #field_name: #field_type = unsafe { core::mem::uninitialized() };
+                        }
+                    };
+                    exprs.push(init);
                 }
 
                 quote! {
@@ -132,7 +146,7 @@ pub fn for_struct(struct_data: &DataStruct) -> TokenStream {
 }
 
 /// Calculates size expression for [`DataEnum`](syn::DataEnum)
-pub fn for_enum(name: &Ident, enum_data: &DataEnum) -> TokenStream {
+pub fn for_enum(name: &Ident, enum_data: &DataEnum, gen: Generate) -> TokenStream {
     let variant_count = enum_data.variants.len();
 
     let size_type = max_size_expr::get_variant_count_max_size_type(variant_count);
@@ -152,7 +166,7 @@ pub fn for_enum(name: &Ident, enum_data: &DataEnum) -> TokenStream {
         let (variant_expr, fields_expr) = get_peek_from_expr_for_fields(prefix, &variant.fields);
 
         let index = Index::from(i);
-        let init_expr = get_peek_from_init_expr_for_fields(&variant.fields);
+        let init_expr = get_peek_from_init_expr_for_fields(&variant.fields, gen);
         let self_assign_expr = match &variant.fields {
             Fields::Named(..) => quote! {
                 *self = #name:: #variant_name { #fields_expr };

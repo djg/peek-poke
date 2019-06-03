@@ -4,7 +4,7 @@ extern crate serde_derive;
 use criterion::{black_box, criterion_group, criterion_main, Benchmark, Criterion};
 
 use bincode::{deserialize_in_place, serialize_into};
-use peek_poke::{Peek, PeekPoke, Poke};
+use peek_poke::{Peek, PeekCopy, PeekPoke, Poke};
 use std::{io, ptr};
 
 #[derive(Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
@@ -27,15 +27,15 @@ pub struct Rect {
 
 pub type PipelineSourceId = u32;
 #[repr(C)]
-#[derive(Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
 pub struct PipelineId(pub PipelineSourceId, pub u32);
 
 #[repr(C)]
-#[derive(Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
 pub struct ClipChainId(pub u64, pub PipelineId);
 
 #[repr(C)]
-#[derive(Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, PeekCopy, Poke, Serialize)]
 pub enum ClipId {
     Clip(usize, PipelineId),
     ClipChain(ClipChainId),

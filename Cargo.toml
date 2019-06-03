@@ -27,6 +27,7 @@ option_default = []
 [[bench]]
 name = "versus_bincode"
 harness = false
+required-features = ["option_copy"]
 
 [profile.release]
 opt-level = 2

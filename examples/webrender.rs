@@ -1,4 +1,4 @@
-use peek_poke::{Peek, PeekPoke, Poke};
+use peek_poke::{Peek, PeekCopy, PeekPoke, Poke};
 
 #[repr(C)]
 #[derive(Debug, PartialEq, PeekPoke)]
@@ -23,15 +23,15 @@ pub struct Rect {
 
 pub type PipelineSourceId = u32;
 #[repr(C)]
-#[derive(Debug, PartialEq, PeekPoke)]
+#[derive(Clone, Copy, Debug, PartialEq, PeekPoke)]
 pub struct PipelineId(pub PipelineSourceId, pub u32);
 
 #[repr(C)]
-#[derive(Debug, PartialEq, PeekPoke)]
+#[derive(Clone, Copy, Debug, PartialEq, PeekPoke)]
 pub struct ClipChainId(pub u64, pub PipelineId);
 
 #[repr(C)]
-#[derive(Debug, PartialEq, PeekPoke)]
+#[derive(Clone, Copy, Debug, PartialEq, PeekCopy, Poke)]
 pub enum ClipId {
     Clip(usize, PipelineId),
     ClipChain(ClipChainId),
