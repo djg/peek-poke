@@ -48,7 +48,6 @@ pub struct CommonItemProperties {
     pub clip_rect: Rect,
     pub clip_id: ClipId,
     pub spatial_id: SpatialId,
-    #[cfg(any(feature = "option_copy", feature = "option_default"))]
     pub hit_info: Option<ItemTag>,
     pub is_backface_visible: bool,
 }
@@ -70,11 +69,10 @@ fn poke_into<T: Poke>(bytes: &mut Vec<u8>, x: &T) {
 
 #[inline(never)]
 unsafe fn test1<T: Peek>(x: &mut T, bytes: *const u8) -> *const u8 {
-    x.peek_from(bytes)
+    T::peek_from(bytes, x)
 }
 
 fn peek_from<T: Peek>(x: &mut T, bytes: &[u8]) -> usize {
-    assert!(bytes.len() >= <T>::max_size());
     let ptr = bytes.as_ptr();
     let new_ptr = unsafe { test1(x, ptr) };
     let size = (new_ptr as usize) - (ptr as usize);
@@ -90,7 +88,6 @@ pub fn main() {
         },
         clip_id: ClipId::Clip(5, PipelineId(1, 2)),
         spatial_id: SpatialId(3, PipelineId(4, 5)),
-        #[cfg(any(feature = "option_copy", feature = "option_default"))]
         hit_info: None,
         is_backface_visible: true,
     };
@@ -100,8 +97,8 @@ pub fn main() {
     assert_eq!(
         bytes,
         vec![
-            0u8, 0, 128, 63, 0, 0, 0, 64, 0, 0, 128, 64, 0, 0, 160, 64, 3, 0, 0, 0, 0, 0, 0, 0, 4,
-            0, 0, 0, 5, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 1
+            0u8, 0, 128, 63, 0, 0, 0, 64, 0, 0, 128, 64, 0, 0, 160, 64, 0, 5, 0, 0, 0, 0, 0, 0, 0,
+            1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 0, 1
         ]
     );
     let mut y: CommonItemProperties = unsafe { std::mem::uninitialized() };

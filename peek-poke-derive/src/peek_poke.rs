@@ -110,7 +110,7 @@ fn get_impl(input: DeriveInput, gen: Generate) -> TokenStream {
             #[allow(unused)]
             impl #impl_generics peek_poke::Peek for #name #ty_generics #where_clause {
                 #[inline(always)]
-                unsafe fn peek_from(&mut self, bytes: *const u8) -> *const u8 {
+                unsafe fn peek_from(bytes: *const u8, output: *mut Self) -> *const u8 {
                     #peek_from
                 }
             }

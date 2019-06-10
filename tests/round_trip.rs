@@ -18,8 +18,7 @@ where
     V: Debug + Default + PartialEq + Peek + Poke,
 {
     let v = poke_into(&a);
-    let mut b = V::default();
-    let end_ptr = unsafe { b.peek_from(v.as_ptr()) };
+    let (b, end_ptr) = unsafe { peek_poke::peek_from_default(v.as_ptr()) };
     let size = end_ptr as usize - v.as_ptr() as usize;
     assert_eq!(size, v.len());
     assert_eq!(a, b);
