@@ -70,7 +70,7 @@ unsafe fn test<T: Poke>(bytes: *mut u8, x: &T) -> *mut u8 {
 }
 
 fn poke_into<T: Poke>(bytes: &mut Vec<u8>, x: &T) {
-    bytes.reserve(<T>::max_size());
+    bytes.reserve(<T>::MAX_SIZE);
     let ptr = bytes.as_mut_ptr();
     let new_ptr = unsafe { test(ptr, x) };
     let new_len = (new_ptr as usize) - (bytes.as_ptr() as usize);
@@ -80,7 +80,7 @@ fn poke_into<T: Poke>(bytes: &mut Vec<u8>, x: &T) {
 }
 
 fn peek_from<T: Copy + Peek>(bytes: &[u8]) -> T {
-    assert!(bytes.len() >= <T>::max_size());
+    assert!(bytes.len() >= <T>::MAX_SIZE);
     let ptr = bytes.as_ptr();
     let (result, new_ptr): (T, _) = unsafe { peek_poke::peek_from_uninit(bytes.as_ptr()) };
     let size = (new_ptr as usize) - (ptr as usize);

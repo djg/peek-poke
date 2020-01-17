@@ -2,7 +2,7 @@
 
 [package]
 name = "peek-poke"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Dan Glastonbury <dan.glastonbury@gmail.com>"]
 repository = "https://github.com/djg/peek-poke"
 description = "A mechanism for serializing and deserializing data into/from byte buffers, for use in WebRender."
@@ -11,7 +11,7 @@ edition = "2018"
 
 [dependencies]
 euclid = { version = "0.20", optional = true }
-peek-poke-derive = { version = "0.2", path = "./peek-poke-derive", optional = true }
+peek-poke-derive = { version = "0.3", path = "./peek-poke-derive", optional = true }
 
 [dev-dependencies]
 bincode = "1.1"

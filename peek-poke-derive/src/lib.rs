@@ -11,7 +11,7 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::{Ident, Index, TraitBound};
-use synstructure::{decl_derive, Structure, BindStyle, AddBounds};
+use synstructure::{decl_derive, AddBounds, BindStyle, Structure};
 use unicode_xid::UnicodeXID;
 
 // Internal method for sanitizing an identifier for hygiene purposes.
@@ -54,12 +54,12 @@ fn derive_max_size(s: &Structure) -> TokenStream {
         let variant_size = vi.bindings().iter().fold(quote!(0), |acc, bi| {
             // compute size of each variant by summing the sizes of its bindings
             let ty = &bi.ast().ty;
-            quote!(#acc + <#ty>::max_size())
+            quote!(#acc + <#ty>::MAX_SIZE)
         });
 
         // find the maximum of each variant
         quote! {
-            max(#acc, #variant_size)
+            peek_poke::max(#acc, #variant_size)
         }
     });
 
@@ -68,16 +68,12 @@ fn derive_max_size(s: &Structure) -> TokenStream {
     } else {
         let discriminant_size_type = get_discriminant_size_type(s.variants().len());
         quote! {
-            #discriminant_size_type ::max_size() + #max_size
+            #discriminant_size_type ::MAX_SIZE + #max_size
         }
     };
 
     quote! {
-        #[inline(always)]
-        fn max_size() -> usize {
-            use std::cmp::max;
-            #body
-        }
+        const MAX_SIZE: usize = #body;
     }
 }
 

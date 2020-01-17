@@ -12,7 +12,7 @@ use peek_poke::{Peek, PeekPoke, Poke};
 use std::{fmt::Debug, marker::PhantomData};
 
 fn poke_into<V: Peek + Poke>(a: &V) -> Vec<u8> {
-    let mut v = <Vec<u8>>::with_capacity(<V>::max_size());
+    let mut v = <Vec<u8>>::with_capacity(<V>::MAX_SIZE);
     let end_ptr = unsafe { a.poke_into(v.as_mut_ptr()) };
     let new_size = end_ptr as usize - v.as_ptr() as usize;
     assert!(new_size <= v.capacity());
@@ -98,7 +98,7 @@ fn test_fixed_size_array() {
 
 #[test]
 fn test_tuple() {
-    the_same((1isize, ));
+    the_same((1isize,));
     the_same((1isize, 2isize, 3isize));
     the_same((1isize, ()));
 }
@@ -229,43 +229,43 @@ fn test_generic_enum() {
     }
 }
 
-#[cfg(all(feature = "extras", feature = "option_copy"))]
+#[cfg(feature = "extras")]
 mod extra_tests {
     use super::*;
-    use euclid::{Point2D, Rect, SideOffsets2D, Size2D, Transform3D, Vector2D};
+    use euclid::default::{Point2D, Rect, SideOffsets2D, Size2D, Transform3D, Vector2D};
     use std::mem::size_of;
 
     #[test]
     fn euclid_types() {
         the_same(Point2D::<f32>::new(1.0, 2.0));
-        assert_eq!(Point2D::<f32>::max_size(), 2 * size_of::<f32>());
+        assert_eq!(Point2D::<f32>::MAX_SIZE, 2 * size_of::<f32>());
 
         the_same(Rect::<f32>::new(
             Point2D::<f32>::new(0.0, 0.0),
             Size2D::<f32>::new(100.0, 80.0),
         ));
-        assert_eq!(Rect::<f32>::max_size(), 4 * size_of::<f32>());
+        assert_eq!(Rect::<f32>::MAX_SIZE, 4 * size_of::<f32>());
 
         the_same(SideOffsets2D::<f32>::new(0.0, 10.0, -1.0, -10.0));
-        assert_eq!(SideOffsets2D::<f32>::max_size(), 4 * size_of::<f32>());
+        assert_eq!(SideOffsets2D::<f32>::MAX_SIZE, 4 * size_of::<f32>());
 
         the_same(Transform3D::<f32>::identity());
-        assert_eq!(Transform3D::<f32>::max_size(), 16 * size_of::<f32>());
+        assert_eq!(Transform3D::<f32>::MAX_SIZE, 16 * size_of::<f32>());
 
         the_same(Vector2D::<f32>::new(1.0, 2.0));
-        assert_eq!(Vector2D::<f32>::max_size(), 2 * size_of::<f32>());
+        assert_eq!(Vector2D::<f32>::MAX_SIZE, 2 * size_of::<f32>());
     }
 
     #[test]
     fn webrender_api_types() {
         type PipelineSourceId = i32;
-        #[derive(Clone, Copy, Debug, PartialEq, PeekPoke)]
+        #[derive(Clone, Copy, Debug, Default, PartialEq, PeekPoke)]
         struct PipelineId(pub PipelineSourceId, pub u32);
 
-        #[derive(Clone, Copy, Debug, PartialEq, PeekPoke)]
+        #[derive(Clone, Copy, Debug, Default, PartialEq, PeekPoke)]
         struct ClipChainId(pub u64, pub PipelineId);
 
-        #[derive(Clone, Copy, Debug, PartialEq, PeekPoke)]
+        #[derive(Clone, Copy, Debug, Default, PartialEq, PeekPoke)]
         struct SpatialId(pub usize, pub PipelineId);
 
         the_same(PipelineId(42, 2));

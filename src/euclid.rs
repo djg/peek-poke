@@ -12,10 +12,8 @@ use crate::{Peek, Poke};
 use euclid::{Point2D, Rect, SideOffsets2D, Size2D, Transform3D, Vector2D};
 
 unsafe impl<T: Poke, U> Poke for Point2D<T, U> {
-    #[inline(always)]
-    fn max_size() -> usize {
-        2 * T::max_size()
-    }
+    const MAX_SIZE: usize = 2 * T::MAX_SIZE;
+
     #[inline(always)]
     unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         let bytes = self.x.poke_into(bytes);
@@ -33,10 +31,8 @@ impl<T: Peek, U> Peek for Point2D<T, U> {
 }
 
 unsafe impl<T: Poke, U> Poke for Rect<T, U> {
-    #[inline(always)]
-    fn max_size() -> usize {
-        Point2D::<T, U>::max_size() + Size2D::<T, U>::max_size()
-    }
+    const MAX_SIZE: usize = Point2D::<T, U>::MAX_SIZE + Size2D::<T, U>::MAX_SIZE;
+
     #[inline(always)]
     unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         let bytes = self.origin.poke_into(bytes);
@@ -54,10 +50,8 @@ impl<T: Peek, U> Peek for Rect<T, U> {
 }
 
 unsafe impl<T: Poke, U> Poke for SideOffsets2D<T, U> {
-    #[inline(always)]
-    fn max_size() -> usize {
-        4 * T::max_size()
-    }
+    const MAX_SIZE: usize = 4 * T::MAX_SIZE;
+
     #[inline(always)]
     unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         let bytes = self.top.poke_into(bytes);
@@ -79,10 +73,8 @@ impl<T: Peek, U> Peek for SideOffsets2D<T, U> {
 }
 
 unsafe impl<T: Poke, U> Poke for Size2D<T, U> {
-    #[inline(always)]
-    fn max_size() -> usize {
-        2 * T::max_size()
-    }
+    const MAX_SIZE: usize = 2 * T::MAX_SIZE;
+
     #[inline(always)]
     unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         let bytes = self.width.poke_into(bytes);
@@ -100,10 +92,8 @@ impl<T: Peek, U> Peek for Size2D<T, U> {
 }
 
 unsafe impl<T: Poke, S, D> Poke for Transform3D<T, S, D> {
-    #[inline(always)]
-    fn max_size() -> usize {
-        16 * T::max_size()
-    }
+    const MAX_SIZE: usize = 16 * T::MAX_SIZE;
+
     #[inline(always)]
     unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         let bytes = self.m11.poke_into(bytes);
@@ -149,10 +139,8 @@ impl<T: Peek, S, D> Peek for Transform3D<T, S, D> {
 }
 
 unsafe impl<T: Poke, U> Poke for Vector2D<T, U> {
-    #[inline(always)]
-    fn max_size() -> usize {
-        2 * T::max_size()
-    }
+    const MAX_SIZE: usize = 2 * T::MAX_SIZE;
+
     #[inline(always)]
     unsafe fn poke_into(&self, bytes: *mut u8) -> *mut u8 {
         let bytes = self.x.poke_into(bytes);
