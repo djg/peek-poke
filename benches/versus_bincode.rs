@@ -4,22 +4,22 @@ extern crate serde_derive;
 use criterion::{black_box, criterion_group, criterion_main, Benchmark, Criterion};
 
 use bincode::{deserialize_in_place, serialize_into};
-use peek_poke::{Peek, PeekCopy, PeekPoke, Poke};
+use peek_poke::{PeekPoke, Poke};
 use std::{io, ptr};
 
-#[derive(Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
+#[derive(Debug, Default, Deserialize, PartialEq, PeekPoke, Serialize)]
 pub struct Point {
     pub x: f32,
     pub y: f32,
 }
 
-#[derive(Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
+#[derive(Debug, Default, Deserialize, PartialEq, PeekPoke, Serialize)]
 pub struct Size {
     pub w: f32,
     pub h: f32,
 }
 
-#[derive(Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
+#[derive(Debug, Default, Deserialize, PartialEq, PeekPoke, Serialize)]
 pub struct Rect {
     pub point: Point,
     pub size: Size,
@@ -30,15 +30,27 @@ pub type PipelineSourceId = u32;
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
 pub struct PipelineId(pub PipelineSourceId, pub u32);
 
+impl Default for PipelineId {
+    fn default() -> Self {
+        PipelineId(0, 0)
+    }
+}
+
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, PartialEq, PeekPoke, Serialize)]
 pub struct ClipChainId(pub u64, pub PipelineId);
 
 #[repr(C)]
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, PeekCopy, Poke, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
 pub enum ClipId {
     Clip(usize, PipelineId),
     ClipChain(ClipChainId),
+}
+
+impl Default for ClipId {
+    fn default() -> Self {
+        ClipId::Clip(!0, PipelineId::default())
+    }
 }
 
 #[repr(C)]
@@ -46,11 +58,11 @@ pub enum ClipId {
 pub struct ItemTag(u64, u16);
 
 #[repr(C)]
-#[derive(Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
+#[derive(Debug, Default, Deserialize, PartialEq, PeekPoke, Serialize)]
 pub struct SpatialId(pub usize, PipelineId);
 
 #[repr(C)]
-#[derive(Debug, Deserialize, PartialEq, PeekPoke, Serialize)]
+#[derive(Debug, Default, Deserialize, PartialEq, PeekPoke, Serialize)]
 pub struct CommonItemProperties {
     pub clip_rect: Rect,
     pub spatial_id: SpatialId,
@@ -162,9 +174,8 @@ fn criterion_benchmark(c: &mut Criterion) {
                 0u8, 0, 128, 63, 0, 0, 0, 64, 0, 0, 128, 64, 0, 0, 160, 64, 3, 0, 0, 0, 0, 0, 0, 0,
                 4, 0, 0, 0, 5, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 1,
             ];
-            let mut result: CommonItemProperties = unsafe { std::mem::uninitialized() };
             b.iter(|| {
-                black_box(unsafe { result.peek_from(black_box(bytes.as_ptr())) });
+                black_box(unsafe { peek_poke::peek_from_default::<CommonItemProperties>(black_box(bytes.as_ptr())) });
             })
         })
         .with_function("bincode::deserialize", |b| {
@@ -172,7 +183,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 0u8, 0, 128, 63, 0, 0, 0, 64, 0, 0, 128, 64, 0, 0, 160, 64, 3, 0, 0, 0, 0, 0, 0, 0,
                 4, 0, 0, 0, 5, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 0, 1,
             ];
-            let mut result: CommonItemProperties = unsafe { std::mem::uninitialized() };
+            let mut result = CommonItemProperties::default();
             let reader = UnsafeReader::new(&bytes);
             b.iter(|| {
                 let reader = bincode::IoReader::new(reader);

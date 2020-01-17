@@ -4,11 +4,13 @@
 name = "peek-poke"
 version = "0.2.0"
 authors = ["Dan Glastonbury <dan.glastonbury@gmail.com>"]
+repository = "https://github.com/djg/peek-poke"
+description = "A mechanism for serializing and deserializing data into/from byte buffers, for use in WebRender."
 license = "MIT/Apache-2.0"
 edition = "2018"
 
 [dependencies]
-euclid = { version = "*", optional = true }
+euclid = { version = "0.20", optional = true }
 peek-poke-derive = { version = "0.2", path = "./peek-poke-derive", optional = true }
 
 [dev-dependencies]
@@ -21,13 +23,7 @@ serde_derive = { git = "https://github.com/servo/serde", branch = "deserialize_f
 default = ["derive"]
 derive = ["peek-poke-derive"]
 extras = ["derive", "euclid"]
-option_copy = []
-option_default = []
 
 [[bench]]
 name = "versus_bincode"
 harness = false
-required-features = ["option_copy"]
-
-[profile.release]
-opt-level = 2
