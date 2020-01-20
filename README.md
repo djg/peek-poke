@@ -2,6 +2,16 @@
 
 Peek from and poke structures into byte slices.
 
+:warning: This probably isn't the crate you're looking for. Start with
+[bincode](https://crates.io/crates/bincode) and only if you can't live with the
+performance of `bincode` consider `peek-poke`. :warning:
+
+## Safety
+
+`peek-poke` was built to improve serialization/deserialization performance for
+WebRender, so contains a couple of sharp edges. Read the documentation for
+`Peek` and `Poke` traits for the requirements of using this crate.
+
 ## Benchmark
 
 Below are the benchmark results of comparison between `peek-poke` and `bincode` serializing and deserializing same `struct`:
