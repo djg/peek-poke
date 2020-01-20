@@ -1,5 +1,4 @@
-#[macro_use]
-extern crate serde_derive;
+use serde::{Deserialize, Serialize};
 
 use criterion::{black_box, criterion_group, criterion_main, Benchmark, Criterion};
 

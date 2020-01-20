@@ -16,8 +16,7 @@ peek-poke-derive = { version = "0.3", path = "./peek-poke-derive", optional = tr
 [dev-dependencies]
 bincode = "1.1"
 criterion = "0.2"
-serde = "1.0"
-serde_derive = { git = "https://github.com/servo/serde", branch = "deserialize_from_enums10", features = ["deserialize_in_place"] }
+serde = { version = "1.0", features = ["derive"] }
 
 [features]
 default = ["derive"]
